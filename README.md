@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/tauri-apps/tauri/HEAD/app-icon.png" width="100" />
   <h1>Easy Cloud</h1>
   <p><strong>A modern, ultra-fast all-in-one Cloud Management Tool.</strong></p>
   <p>Built with Vue 3, Vite, and Tauri (Rust).</p>
