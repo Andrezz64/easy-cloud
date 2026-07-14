@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Easy Cloud — Nuvem acessível para todos</title>
+  <meta name="description" content="Democratizando o acesso à infraestrutura cloud. Interface visual, intuitiva e gratuita para gerenciar AWS.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --bg:#050505; --card:#0c0c0c; --border:rgba(255,255,255,0.07); --text:#ededed; --muted:#8a8a8a; --dim:#555; --accent:#0070f3; --green:#0cce6b; --radius:12px; --max:min(90vw, 1080px); }
+html { scroll-behavior: smooth; }
+body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; -webkit-font-smoothing:antialiased; }
+a { color:var(--accent); text-decoration:none; }
+
+/* NAV */
+.nav { position:fixed; top:0; left:0; right:0; z-index:200; -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); background:rgba(5,5,5,0.8); border-bottom:1px solid var(--border); }
+.nav-inner { max-width:var(--max); margin:0 auto; padding:0 1.5rem; height:52px; display:flex; align-items:center; justify-content:space-between; }
+.nav-brand { font-size:0.9375rem; font-weight:700; }
+.nav-links { display:flex; gap:1.5rem; align-items:center; }
+.nav-links a { color:var(--muted); font-size:0.8125rem; font-weight:450; transition:color .15s; }
+.nav-links a:hover { color:var(--text); }
+.nav-toggle { display:none; background:none; border:none; color:var(--text); cursor:pointer; padding:0.25rem; }
+
+/* WRAP */
+.wrap { max-width:var(--max); margin:0 auto; padding:0 1.5rem; }
+
+/* HERO */
+.hero { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6rem 0 4rem; }
+.hero-badge { display:inline-flex; align-items:center; gap:0.4rem; padding:0.3rem 0.8rem; border-radius:20px; background:rgba(12,206,107,0.06); border:1px solid rgba(12,206,107,0.15); font-size:0.6875rem; color:var(--green); font-weight:500; margin-bottom:1.5rem; }
+.hero h1 { font-size:clamp(2rem,5vw,3.25rem); font-weight:800; line-height:1.1; letter-spacing:-0.03em; margin-bottom:1rem; background:linear-gradient(145deg,#fff 40%,#666); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p { font-size:1rem; color:var(--muted); max-width:440px; margin-bottom:2rem; line-height:1.7; }
+.hero-actions { display:flex; gap:0.625rem; flex-wrap:wrap; justify-content:center; }
+
+/* BTNS */
+.btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.625rem 1.25rem; border-radius:8px; font-size:0.8125rem; font-weight:550; cursor:pointer; transition:all .15s; border:none; text-decoration:none; }
+.btn--w { background:#fff; color:#000; }
+.btn--w:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(255,255,255,0.08); }
+.btn--g { background:transparent; color:var(--text); border:1px solid var(--border); }
+.btn--g:hover { border-color:rgba(255,255,255,0.15); }
+
+/* SECTIONS */
+section { padding:4rem 0; }
+.s-head { text-align:center; margin-bottom:2rem; }
+.s-head h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem; }
+.s-head p { color:var(--muted); font-size:0.875rem; }
+
+/* GRID */
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:0.625rem; }
+.card { padding:1.125rem; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); }
+.card:hover { border-color:rgba(255,255,255,0.12); }
+.card-i { font-size:1.125rem; margin-bottom:0.5rem; }
+.card h3 { font-size:0.8125rem; font-weight:600; margin-bottom:0.3rem; }
+.card p { font-size:0.75rem; color:var(--muted); line-height:1.6; }
+
+/* STATS */
+.stats { display:flex; justify-content:center; gap:2rem; margin-top:2rem; }
+.stat { text-align:center; }
+.stat strong { display:block; font-size:1.25rem; font-weight:800; background:linear-gradient(135deg,#fff,var(--accent)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.stat span { font-size:0.625rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+
+/* CTA */
+.cta { max-width:380px; margin:0 auto; padding:1.5rem; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); text-align:center; }
+.steps { display:flex; flex-direction:column; gap:0.625rem; margin-bottom:1.25rem; text-align:left; }
+.step { display:flex; align-items:center; gap:0.625rem; }
+.step span { width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(0,112,243,0.08); border:1px solid rgba(0,112,243,0.12); border-radius:6px; font-weight:700; font-size:0.6875rem; color:var(--accent); flex-shrink:0; }
+.step p { font-size:0.75rem; color:var(--muted); }
+.cta-btns { display:flex; gap:0.5rem; justify-content:center; }
+
+/* FOOTER */
+footer { text-align:center; padding:1.5rem 0; border-top:1px solid var(--border); margin-top:1rem; }
+footer p { font-size:0.6875rem; color:var(--dim); }
+footer p+p { margin-top:0.25rem; }
+
+/* MOBILE */
+@media (max-width:640px) {
+  .nav-links { position:fixed; top:52px; left:0; right:0; background:rgba(5,5,5,0.95); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border-bottom:1px solid var(--border); flex-direction:column; padding:1rem 1.5rem; gap:0.75rem; display:none; }
+  .nav-links.open { display:flex; }
+  .nav-toggle { display:block; }
+  .g3 { grid-template-columns:1fr; }
+  .stats { gap:1.25rem; }
+  .hero h1 { font-size:1.75rem; }
+  .hero p { font-size:0.875rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">☁️ Easy Cloud</div>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#mission">Missão</a>
+      <a href="#contribute">Contribuir</a>
+      <a href="https://github.com/Andrezz64/easy-cloud" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="hero-badge">🌱 Open Source · Gratuito · Para todos</div>
+  <h1>A nuvem não precisa ser complicada</h1>
+  <p>Interface visual e gratuita para gerenciar AWS. Sem servidores, sem tracking, sem complicação.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/Andrezz64/easy-cloud/releases/latest" class="btn btn--w">↓ Download</a>
+    <a href="#features" class="btn btn--g">Ver mais</a>
+  </div>
+</section>
+
+<section id="features">
+  <div class="s-head"><h2>Features</h2><p>Tudo numa interface desktop nativa.</p></div>
+  <div class="g3">
+    <div class="card"><div class="card-i">🪣</div><h3>S3 Manager</h3><p>Upload, download, preview, editor de código, context menu, presigned URLs.</p></div>
+    <div class="card"><div class="card-i">📦</div><h3>CloudFormation</h3><p>Deploy, drift detection, change sets, tracking em tempo real, builder visual.</p></div>
+    <div class="card"><div class="card-i">💰</div><h3>Billing</h3><p>Custos por serviço, uso com rates, forecast, relatórios por período.</p></div>
+    <div class="card"><div class="card-i">🔗</div><h3>Share Links</h3><p>Presigned URLs pra compartilhar sem expor credenciais.</p></div>
+    <div class="card"><div class="card-i">✎</div><h3>Code Editor</h3><p>Edite no S3 com syntax highlighting. Ctrl+S salva no bucket.</p></div>
+    <div class="card"><div class="card-i">🔒</div><h3>100% Local</h3><p>Credenciais na sua máquina. Zero servidores. Tauri + Rust.</p></div>
+  </div>
+</section>
+
+<section id="mission">
+  <div class="s-head"><h2>Missão</h2><p>Cloud sem barreira de entrada.</p></div>
+  <div class="g3">
+    <div class="card"><h3>🎓 Educação</h3><p>Aprender cloud sem a complexidade do console AWS.</p></div>
+    <div class="card"><h3>🌍 Inclusão</h3><p>Mesma tecnologia de grandes empresas, custo zero de ferramenta.</p></div>
+    <div class="card"><h3>🤝 Comunidade</h3><p>Cada contribuição facilita o acesso pra alguém.</p></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><strong>100%</strong><span>Open Source</span></div>
+    <div class="stat"><strong>$0</strong><span>Para usar</span></div>
+    <div class="stat"><strong>21+</strong><span>APIs</span></div>
+    <div class="stat"><strong>0</strong><span>Tracking</span></div>
+  </div>
+</section>
+
+<section id="contribute">
+  <div class="s-head"><h2>Contribua</h2><p>Fork, issue, PR — qualquer ajuda conta.</p></div>
+  <div class="cta">
+    <div class="steps">
+      <div class="step"><span>1</span><p>Fork no GitHub</p></div>
+      <div class="step"><span>2</span><p>Escolha uma issue</p></div>
+      <div class="step"><span>3</span><p>Abra um PR</p></div>
+    </div>
+    <div class="cta-btns">
+      <a href="https://github.com/Andrezz64/easy-cloud" target="_blank" rel="noopener" class="btn btn--w">GitHub</a>
+      <a href="https://github.com/Andrezz64/easy-cloud/issues" target="_blank" rel="noopener" class="btn btn--g">Issues</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Easy Cloud — Feito com ❤️ pela comunidade</p>
+  <p>AGPL-3.0 · Nenhum dado coletado · 100% local</p>
+</footer>
+
+</div>
+</body>
+</html>
