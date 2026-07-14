@@ -1,4 +1,5 @@
 <div align="center">
+<img src="./public/logo.svg" alt="Easy Cloud" width="80" />
   <h1>Easy Cloud</h1>
   <p><strong>A modern, ultra-fast all-in-one Cloud Management Tool.</strong></p>
   <p>Built with Vue 3, Vite, and Tauri (Rust).</p>
@@ -80,7 +81,22 @@ You can find the generated installers and raw executables inside the `src-tauri/
 
 ## 🗺️ Roadmap
 
-Check out our [Roadmap](docs/roadmap.md) to see planned features, including our goal to implement **Zero-Knowledge End-to-End Encryption (E2E)**!
+Check out our [Roadmap](docs/core/roadmap.md) to see planned features, including our goal to implement **Zero-Knowledge End-to-End Encryption (E2E)**!
+
+---
+
+## 📚 Documentation
+
+Full documentation available in the [`docs/`](./docs/) folder:
+
+- [Getting Started](docs/core/getting-started.md)
+- [Features Overview](docs/core/features.md)
+- [S3 File Manager](docs/guides/s3.md)
+- [CloudFormation](docs/guides/cloudformation.md)
+- [Billing & Costs](docs/guides/billing.md)
+- [Architecture](docs/core/architecture.md)
+- [Contributing](docs/core/contributing.md)
+- [FAQ](docs/guides/faq.md)
 
 ---
 

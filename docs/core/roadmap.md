@@ -1,3 +1,5 @@
+[← Summary](./SUMMARY.md)
+
 # Easy Cloud - Roadmap
 
 Este documento centraliza a visão estratégica, as ideias, melhorias e potenciais novas funcionalidades para o futuro do projeto Easy Cloud.

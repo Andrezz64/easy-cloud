@@ -1,3 +1,5 @@
+[← Summary](../core/SUMMARY.md)
+
 # Easy Cloud — AWS SDK Capabilities
 
 Documento de referência com todas as operações disponíveis nas libs AWS SDK já integradas no projeto.

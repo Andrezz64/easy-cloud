@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="shortcut icon" href="./icon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Easy Cloud — Cloud made simple</title>
+  <meta name="description" content="Free, open source desktop app for managing AWS visually. No servers, no tracking, 100% local.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --bg:#050505; --card:#0c0c0c; --border:rgba(255,255,255,0.07); --text:#ededed; --muted:#8a8a8a; --dim:#555; --accent:#0070f3; --green:#0cce6b; --radius:12px; --max:min(90vw, 1080px); }
+html { scroll-behavior: smooth; }
+body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+a { color:var(--accent); text-decoration:none; }
+
+/* Background Clouds */
+.bg-rings { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
+.ring { position:absolute; opacity:0.7; }
+.ring svg { width:100%; height:100%; }
+.ring:nth-child(1) { width:300px; height:180px; top:5%; left:-50px; }
+.ring:nth-child(2) { width:400px; height:240px; top:25%; right:-80px; }
+.ring:nth-child(3) { width:250px; height:150px; bottom:30%; left:5%; }
+.ring:nth-child(4) { width:200px; height:120px; top:55%; left:45%; }
+.ring:nth-child(5) { width:450px; height:270px; bottom:5%; right:-60px; }
+.ring:nth-child(6) { width:180px; height:108px; top:15%; right:20%; }
+
+.nav, .wrap, footer { position:relative; z-index:1; }
+.nav { position:fixed; top:0; left:0; right:0; z-index:200; -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); background:rgba(5,5,5,0.8); border-bottom:1px solid var(--border); }
+.nav-inner { max-width:var(--max); margin:0 auto; padding:0 1.5rem; height:52px; display:flex; align-items:center; justify-content:space-between; }
+.nav-brand { font-size:0.9375rem; font-weight:700; display:flex; align-items:center; gap:0.4rem; }
+.nav-logo { vertical-align:middle; }
+.nav-links { display:flex; gap:1.5rem; align-items:center; }
+.nav-links a { color:var(--muted); font-size:0.8125rem; font-weight:450; transition:color .15s; }
+.nav-links a:hover { color:var(--text); }
+.nav-toggle { display:none; background:none; border:none; color:var(--text); cursor:pointer; padding:0.25rem; }
+.wrap { max-width:var(--max); margin:0 auto; padding:0 1.5rem; }
+.hero { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6rem 0 4rem; }
+.hero-badge { display:inline-flex; align-items:center; gap:0.4rem; padding:0.3rem 0.8rem; border-radius:20px; background:rgba(12,206,107,0.06); border:1px solid rgba(12,206,107,0.15); font-size:0.6875rem; color:var(--green); font-weight:500; margin-bottom:1.5rem; }
+.hero h1 { font-size:clamp(2rem,5vw,3.25rem); font-weight:800; line-height:1.1; letter-spacing:-0.03em; margin-bottom:1rem; background:linear-gradient(145deg,#fff 40%,#666); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p { font-size:1rem; color:var(--muted); max-width:440px; margin-bottom:2rem; line-height:1.7; }
+.hero-actions { display:flex; gap:0.625rem; flex-wrap:wrap; justify-content:center; }
+.btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.625rem 1.25rem; border-radius:8px; font-size:0.8125rem; font-weight:550; cursor:pointer; transition:all .15s; border:none; text-decoration:none; }
+.btn--w { background:#fff; color:#000; }
+.btn--w:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(255,255,255,0.08); }
+.btn--g { background:transparent; color:var(--text); border:1px solid var(--border); }
+.btn--g:hover { border-color:rgba(255,255,255,0.15); }
+section { padding:4rem 0; }
+.s-head { text-align:center; margin-bottom:2rem; }
+.s-head h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem; }
+.s-head p { color:var(--muted); font-size:0.875rem; }
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:0.625rem; }
+.card { padding:1.125rem; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); }
+.card:hover { border-color:rgba(255,255,255,0.12); }
+.card-i { font-size:1.125rem; margin-bottom:0.5rem; }
+.card h3 { font-size:0.8125rem; font-weight:600; margin-bottom:0.3rem; }
+.card p { font-size:0.75rem; color:var(--muted); line-height:1.6; }
+.stats { display:flex; justify-content:center; gap:2rem; margin-top:2rem; }
+.stat { text-align:center; }
+.stat strong { display:block; font-size:1.25rem; font-weight:800; background:linear-gradient(135deg,#fff,var(--accent)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.stat span { font-size:0.625rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; }
+.cta { max-width:380px; margin:0 auto; padding:1.5rem; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); text-align:center; }
+.steps { display:flex; flex-direction:column; gap:0.625rem; margin-bottom:1.25rem; text-align:left; }
+.step { display:flex; align-items:center; gap:0.625rem; }
+.step span { width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(0,112,243,0.08); border:1px solid rgba(0,112,243,0.12); border-radius:6px; font-weight:700; font-size:0.6875rem; color:var(--accent); flex-shrink:0; }
+.step p { font-size:0.75rem; color:var(--muted); }
+.cta-btns { display:flex; gap:0.5rem; justify-content:center; }
+.cta-link { color:#fff; font-size:0.75rem; margin-bottom:1rem; opacity:0.6; transition:opacity .15s; display: flex; justify-content: center; align-items: center;}
+.cta-link:hover { opacity:1; }
+footer { text-align:center; padding:1.5rem 0; border-top:1px solid var(--border); margin-top:1rem; }
+footer p { font-size:0.6875rem; color:var(--dim); }
+footer p+p { margin-top:0.25rem; }
+@media (max-width:640px) {
+  .nav-links { position:fixed; top:52px; left:0; right:0; background:rgba(5,5,5,0.95); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border-bottom:1px solid var(--border); flex-direction:column; padding:1rem 1.5rem; gap:0.75rem; display:none; }
+  .nav-links.open { display:flex; }
+  .nav-toggle { display:block; }
+  .g3 { grid-template-columns:1fr; }
+  .stats { gap:1.25rem; }
+  .hero h1 { font-size:1.75rem; }
+  .hero p { font-size:0.875rem; }
+  .ftabs { flex-wrap:wrap; }
+  .fgrid { grid-template-columns:1fr; }
+}
+
+/* Feature Tabs */
+.ftabs { display:flex; gap:0.375rem; justify-content:center; margin-bottom:1.5rem; flex-wrap:wrap; }
+.ftab { padding:0.5rem 1rem; border-radius:8px; font-size:0.8125rem; font-weight:500; background:rgba(255,255,255,0.02); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:0.4rem; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.ftab:hover { color:var(--text); border-color:rgba(255,255,255,0.15); background:rgba(255,255,255,0.04); }
+.ftab--active { background:rgba(0,112,243,0.06); border-color:rgba(0,112,243,0.3); color:var(--accent); box-shadow:0 0 12px rgba(0,112,243,0.08); }
+.ftab svg { width:16px; height:16px; opacity:0.7; }
+.ftab--active svg { opacity:1; }
+
+/* Feature Panel */
+.fpanel { animation:fadeUp .25s ease; }
+.fpanel-header { text-align:center; margin-bottom:1.5rem; }
+.fpanel-header h3 { font-size:1.125rem; font-weight:700; margin-bottom:0.3rem; }
+.fpanel-header p { color:var(--muted); font-size:0.8125rem; }
+
+.fgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.625rem; }
+.fitem { padding:1rem 1.125rem; background:rgba(17,17,17,0.5); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; gap:0.35rem; transition:all .2s; position:relative; overflow:hidden; }
+.fitem::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent); transition:left .4s; }
+.fitem:hover::before { left:100%; }
+.fitem:hover { border-color:rgba(255,255,255,0.12); background:rgba(17,17,17,0.7); }
+.fitem strong { font-size:0.8125rem; font-weight:600; }
+.fitem span { font-size:0.75rem; color:var(--muted); line-height:1.6; }
+
+/* Carousel */
+.carousel { position:relative; max-width:100%; overflow:hidden; border-radius:var(--radius); border:1px solid var(--border); background:var(--card); }
+.carousel-track { display:flex; transition:transform .4s cubic-bezier(0.4,0,0.2,1); }
+.carousel-slide { min-width:100%; position:relative; }
+.carousel-slide img { width:100%; height:auto; display:block; border-radius:var(--radius); }
+.carousel-label { position:absolute; bottom:0.75rem; left:0.75rem; padding:0.3rem 0.75rem; background:rgba(0,0,0,0.7); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border-radius:6px; font-size:0.6875rem; font-weight:500; color:var(--text); border:1px solid var(--border); }
+.carousel-controls { display:flex; align-items:center; justify-content:center; gap:1rem; padding:0.75rem 0; }
+.carousel-btn { width:32px; height:32px; display:flex; align-items:center; justify-content:center; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--muted); cursor:pointer; transition:all .15s; }
+.carousel-btn:hover { color:var(--text); border-color:rgba(255,255,255,0.15); }
+.carousel-dots { display:flex; gap:0.375rem; }
+.carousel-dot { width:8px; height:8px; border-radius:50%; border:1px solid var(--border); background:transparent; cursor:pointer; transition:all .2s; padding:0; }
+.carousel-dot--active { background:var(--accent); border-color:var(--accent); }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+<div class="bg-rings">
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(0,112,243,0.3)" stroke-width="1.2"/></svg></div>
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(12,206,107,0.25)" stroke-width="1.2"/></svg></div>
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(255,255,255,0.15)" stroke-width="1"/></svg></div>
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(0,112,243,0.2)" stroke-width="1"/></svg></div>
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(12,206,107,0.18)" stroke-width="1.2"/></svg></div>
+  <div class="ring"><svg viewBox="0 0 200 120" fill="none"><path d="M40 90C20 90 5 78 5 63C5 48 18 36 35 36C37 16 55 2 77 2C99 2 117 16 119 36H125C145 36 160 50 160 67C160 84 145 95 125 95H40Z" stroke="rgba(255,255,255,0.14)" stroke-width="1"/></svg></div>
+</div>
+<div class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand"><img src="logo.svg" alt="Easy Cloud" width="40" height="40" class="nav-logo">Easy Cloud</div>
+    <button type="button" class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#mission">Mission</a>
+      <a href="#contribute">Contribute</a>
+      <a href="https://github.com/Andrezz64/easy-cloud/blob/master/docs/README.md" target="_blank" rel="noopener">Docs</a>
+      <a href="https://github.com/Andrezz64/easy-cloud" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+<section class="hero">
+  <div class="hero-badge">🌱 Open Source · Free · For Everyone</div>
+  <h1>Cloud doesn't have to be complicated</h1>
+  <p>A free visual interface for managing AWS. No servers, no tracking, no friction.</p>
+  
+  <div class="hero-actions">
+    <a href="https://github.com/Andrezz64/easy-cloud/releases/latest" class="btn btn--w">↓ Download</a>
+    <a href="#features" class="btn btn--g">Learn more</a>
+  </div>
+</section>
+
+<!-- Screenshot Carousel -->
+<section id="preview">
+  <div class="s-head"><h2>See it in action</h2><p>Real screenshots from the app.</p></div>
+  <div class="carousel">
+    <div class="carousel-track" id="carouselTrack">
+      <div class="carousel-slide carousel-slide--active">
+        <img src="images/easy-cloud_dashboard.png" alt="Dashboard" loading="lazy">
+        <span class="carousel-label">Dashboard</span>
+      </div>
+      <div class="carousel-slide">
+        <img src="images/easy-cloud_s3.png" alt="S3 File Manager" loading="lazy">
+        <span class="carousel-label">S3 File Manager</span>
+      </div>
+      <div class="carousel-slide">
+        <img src="images/easy-cloud_cloud_formation.png" alt="CloudFormation" loading="lazy">
+        <span class="carousel-label">CloudFormation</span>
+      </div>
+      <div class="carousel-slide">
+        <img src="images/easy-cloud_billing.png" alt="Billing" loading="lazy">
+        <span class="carousel-label">Billing</span>
+      </div>
+    </div>
+    <div class="carousel-controls">
+      <button type="button" class="carousel-btn" onclick="carouselPrev()" aria-label="Previous">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="carousel-dots" id="carouselDots">
+        <button type="button" title="First Image" class="carousel-dot carousel-dot--active" onclick="carouselGo(0)"></button>
+        <button type="button" class="carousel-dot" title="Second Image" onclick="carouselGo(1)"></button>
+        <button type="button" class="carousel-dot" title="Third Image" onclick="carouselGo(2)"></button>
+        <button type="button" class="carousel-dot" title="Fourth Image" onclick="carouselGo(3)"></button>
+      </div>
+      <button type="button" class="carousel-btn" onclick="carouselNext()" aria-label="Next">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="s-head"><h2>Explore the Features</h2><p>Click a module to dive deeper.</p></div>
+  <div class="ftabs">
+    <button type="button" class="ftab ftab--active" onclick="showModule('s3',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4C2 4 4 2 8 2C12 2 14 4 14 4V12C14 12 12 14 8 14C4 14 2 12 2 12V4Z"/><path d="M2 4C2 4 4 6 8 6C12 6 14 4 14 4"/><path d="M2 8C2 8 4 10 8 10C12 10 14 8 14 8"/></svg>S3</button>
+    <button type="button" class="ftab" onclick="showModule('cf',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 4L8 1L14 4V12L8 15L2 12V4Z"/><path d="M8 7V15"/><path d="M2 4L8 7L14 4"/></svg>CloudFormation</button>
+    <button type="button" class="ftab" onclick="showModule('billing',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6H14"/><path d="M5 9H8" stroke-linecap="round"/><path d="M5 11H6.5" stroke-linecap="round"/></svg>Billing</button>
+    <button type="button" class="ftab" onclick="showModule('editor',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8L5 12"/><path d="M11 4L15 8L11 12"/><path d="M9 2L7 14"/></svg>Editor</button>
+    <button type="button" class="ftab" onclick="showModule('security',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M6 7V5C6 3.34 6.9 2 8 2C9.1 2 10 3.34 10 5V7"/><circle cx="8" cy="10.5" r="1" fill="currentColor"/></svg>Security</button>
+  </div>
+  <div class="fpanel" id="mod-s3"><div class="fpanel-header"><h3>S3 File Manager</h3><p>A full file browser that feels native — but for the cloud.</p></div><div class="fgrid"><div class="fitem"><strong>Browse &amp; Navigate</strong><span>Breadcrumb navigation, click folders, back/forward — like your OS file explorer.</span></div><div class="fitem"><strong>Smart Upload</strong><span>Auto multipart for files &gt;10MB. Chunked, with progress bar. Correct Content-Type detection.</span></div><div class="fitem"><strong>Instant Preview</strong><span>Text, code, images previewed inline. 50+ extensions recognized even when S3 metadata is wrong.</span></div><div class="fitem"><strong>In-App Code Editor</strong><span>Syntax highlighting for YAML, JSON, HTML, CSS, JS, Python, etc. Ctrl+S saves directly to S3.</span></div><div class="fitem"><strong>Presigned Share Links</strong><span>Generate temporary URLs (15min to 7 days). Anyone can download — no AWS credentials needed.</span></div><div class="fitem"><strong>Copy / Move / Rename</strong><span>Right-click any file. Copy between buckets, move (copy+delete), batch operations.</span></div><div class="fitem"><strong>Bucket Configuration</strong><span>Edit bucket policy (JSON), toggle versioning, view encryption, manage tags — all in tabs.</span></div><div class="fitem"><strong>Context Menus</strong><span>Right-click everywhere. Empty area: upload, new folder, new file. On files: preview, edit, share, delete.</span></div></div></div>
+  <div class="fpanel" id="mod-cf" style="display:none"><div class="fpanel-header"><h3>CloudFormation</h3><p>Infrastructure as Code — deploy, monitor, manage stacks visually.</p></div><div class="fgrid"><div class="fitem"><strong>YAML Editor + Validation</strong><span>Syntax highlighted editor. Validate button catches errors before you deploy.</span></div><div class="fitem"><strong>Visual Builder</strong><span>Configure S3, SQS, SNS resources via forms. Generates valid YAML automatically.</span></div><div class="fitem"><strong>One-Click Deploy</strong><span>Name your stack and go. Real-time tracker shows every resource being created.</span></div><div class="fitem"><strong>Drift Detection</strong><span>Detect if resources were modified outside CF. See exactly what drifted per resource.</span></div><div class="fitem"><strong>Change Sets</strong><span>Preview updates BEFORE applying. See adds, modifies, removes, and destructive replacements.</span></div><div class="fitem"><strong>Template View</strong><span>View deployed template. Load back to editor. Get AWS Calculator cost estimation link.</span></div><div class="fitem"><strong>Live Operation Tracker</strong><span>Deploy/Update/Delete tracked in real-time. Progress bar, per-resource status, elapsed time.</span></div><div class="fitem"><strong>Cross-Stack Dependencies</strong><span>View exports and imports between stacks. Understand your infrastructure dependency graph.</span></div></div></div>
+  <div class="fpanel" id="mod-billing" style="display:none"><div class="fpanel-header"><h3>Billing &amp; Cost Explorer</h3><p>Understand your AWS spend without the console.</p></div><div class="fgrid"><div class="fitem"><strong>Monthly Summary</strong><span>Current month total, last month, and end-of-month forecast. Delta percentage indicator.</span></div><div class="fitem"><strong>Cost Over Time Chart</strong><span>Bar chart with adaptive granularity. Daily for short ranges, monthly for long periods.</span></div><div class="fitem"><strong>Top Services</strong><span>Proportional bars showing which services cost the most. Visual and instant.</span></div><div class="fitem"><strong>Usage Breakdown</strong><span>Per-service usage with rates: 150GB x $0.023/GB = $3.46. Free tier items tagged green.</span></div><div class="fitem"><strong>Period Filter</strong><span>7 days, 1 month, 3 months, 6 months, 1 year, or custom month range picker.</span></div><div class="fitem"><strong>Smart 2h Cache</strong><span>Per-account cache. Switch accounts instantly from cache. Only manual Refresh costs $0.01.</span></div></div></div>
+  <div class="fpanel" id="mod-editor" style="display:none"><div class="fpanel-header"><h3>Built-in Code Editor</h3><p>Edit files directly on S3 — like VS Code for the cloud.</p></div><div class="fgrid"><div class="fitem"><strong>Syntax Highlighting</strong><span>YAML, JSON, HTML, CSS, JavaScript, TypeScript, Python, Markdown, XML and more.</span></div><div class="fitem"><strong>Ctrl+S Saves to S3</strong><span>Press save and the file uploads with correct Content-Type. No temp files, no friction.</span></div><div class="fitem"><strong>Full-Screen Editor</strong><span>Immersive experience. Line numbers, status bar, language badge, unsaved changes indicator.</span></div><div class="fitem"><strong>Perfect for Static Hosting</strong><span>Edit index.html, style.css, app.js live on S3. Changes are instant — no deploy pipeline.</span></div><div class="fitem"><strong>Zero Friction Open</strong><span>Right-click file &gt; Edit. Or click Edit in preview panel. Two clicks to start editing.</span></div><div class="fitem"><strong>Create New Files</strong><span>Right-click &gt; New File. Name it (e.g. config.json) and start editing immediately.</span></div></div></div>
+  <div class="fpanel" id="mod-security" style="display:none"><div class="fpanel-header"><h3>Security &amp; Privacy</h3><p>Your data, your machine, your rules.</p></div><div class="fgrid"><div class="fitem"><strong>100% Local Execution</strong><span>No proxy servers. API calls go directly from your machine to AWS. Nothing in between.</span></div><div class="fitem"><strong>Credentials Stay Home</strong><span>Stored in localStorage on your device. Never transmitted anywhere except AWS endpoints.</span></div><div class="fitem"><strong>Zero Telemetry</strong><span>No analytics, no tracking, no error reporting to third parties. Nothing phones home.</span></div><div class="fitem"><strong>Rust Backend</strong><span>Compiled native binary via Tauri. No Electron bloat. Memory-safe, fast, auditable.</span></div><div class="fitem"><strong>Fully Open Source</strong><span>Every line is public. Inspect, audit, fork. AGPL-3.0 guarantees it stays open.</span></div><div class="fitem"><strong>Lightweight</strong><span>~8MB installer. Under 50MB RAM. No background processes when the app is closed.</span></div></div></div>
+</section>
+<section id="mission">
+  <div class="s-head"><h2>Mission</h2><p>Cloud without barriers.</p></div>
+  <div class="g3">
+    <div class="card"><h3>🎓 Education</h3><p>Learn cloud without the complexity of the AWS console.</p></div>
+    <div class="card"><h3>🌍 Inclusion</h3><p>Same technology used by big companies, zero tool cost.</p></div>
+    <div class="card"><h3>🤝 Community</h3><p>Every contribution makes cloud access easier for someone.</p></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><strong>100%</strong><span>Open Source</span></div>
+    <div class="stat"><strong>$0</strong><span>To use</span></div>
+    <div class="stat"><strong>21+</strong><span>APIs</span></div>
+    <div class="stat"><strong>0</strong><span>Tracking</span></div>
+  </div>
+</section>
+<section id="contribute">
+  <div class="s-head"><h2>Contribute</h2><p>Fork, issue, PR — every bit helps.</p></div>
+  <a class="cta-link" href="https://github.com/Andrezz64/easy-cloud/blob/master/docs/core/contributing.md" target="_blank" rel="noopener">Learn more</a>
+  <div class="cta">
+    <div class="steps">
+      <div class="step"><span>1</span><p>Fork on GitHub</p></div>
+      <div class="step"><span>2</span><p>Pick an issue</p></div>
+      <div class="step"><span>3</span><p>Open a PR</p></div>
+    </div>
+    <div class="cta-btns">
+      <a href="https://github.com/Andrezz64/easy-cloud" target="_blank" rel="noopener" class="btn btn--w">GitHub</a>
+      <a href="https://github.com/Andrezz64/easy-cloud/issues" target="_blank" rel="noopener" class="btn btn--g">Issues</a>
+    </div>
+  </div>
+</section>
+<footer>
+  <p>Easy Cloud — Made with ❤️ by the community</p>
+  <p>AGPL-3.0 · No data collected · 100% local</p>
+</footer>
+</div>
+<script>
+function showModule(id, btn) {
+  document.querySelectorAll('.fpanel').forEach(function(p){p.style.display='none'});
+  var target = document.getElementById('mod-' + id);
+  if (target) target.style.display = 'block';
+  document.querySelectorAll('.ftab').forEach(function(t){t.classList.remove('ftab--active')});
+  btn.classList.add('ftab--active');
+}
+
+// Carousel
+var carouselIdx = 0;
+var carouselTotal = 4;
+
+function carouselGo(idx) {
+  carouselIdx = idx;
+  document.getElementById('carouselTrack').style.transform = 'translateX(-' + (idx * 100) + '%)';
+  var dots = document.querySelectorAll('.carousel-dot');
+  dots.forEach(function(d){ d.classList.remove('carousel-dot--active'); });
+  dots[idx].classList.add('carousel-dot--active');
+}
+
+function carouselNext() {
+  carouselGo((carouselIdx + 1) % carouselTotal);
+}
+
+function carouselPrev() {
+  carouselGo((carouselIdx - 1 + carouselTotal) % carouselTotal);
+}
+
+// Auto-advance every 5s
+setInterval(carouselNext, 5000);
+
+(function() {
+  var rings = document.querySelectorAll('.ring');
+  var speeds = [0.3, -0.2, 0.25, -0.35, 0.15, -0.4];
+  var angles = [0, 45, 90, 135, 180, 225];
+  var scrollY = 0;
+
+  window.addEventListener('scroll', function() {
+    scrollY = window.pageYOffset || 0;
+  });
+
+  function animate() {
+    var now = Date.now() * 0.001;
+    var maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    var progress = scrollY / maxScroll;
+
+    for (var i = 0; i < rings.length; i++) {
+      var driftX = Math.sin(now * speeds[i] + i) * 20;
+      var driftY = Math.cos(now * speeds[i] * 0.7 + i * 2) * 10;
+      var scrollDriftX = scrollY * speeds[i] * 0.05;
+      var scrollDriftY = scrollY * speeds[i] * -0.02;
+      var scale = 1 + progress * 0.15 * (i % 2 === 0 ? 1 : -0.2);
+      var rotation = now * speeds[i] * 5 + scrollY * speeds[i] * 0.02;
+      var opacity = 0.6 + progress * 0.4;
+
+      rings[i].style.transform = 'translate(' + (driftX + scrollDriftX) + 'px,' + (driftY + scrollDriftY) + 'px) rotate(' + rotation + 'deg) scale(' + scale + ')';
+      rings[i].style.opacity = opacity;
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
