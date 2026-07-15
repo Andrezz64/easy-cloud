@@ -2,6 +2,7 @@ pub mod sts;
 pub mod s3;
 pub mod cloudformation;
 pub mod billing;
+pub mod dashboard;
 
 // Re-export shared types
 use serde::Serialize;

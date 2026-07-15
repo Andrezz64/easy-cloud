@@ -4,6 +4,7 @@ use commands::sts::*;
 use commands::s3::*;
 use commands::cloudformation::*;
 use commands::billing::*;
+use commands::dashboard::*;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -50,6 +51,19 @@ pub fn run() {
             delete_cf_stack,
             update_cf_stack,
             validate_cf_template,
+            get_stack_template,
+            detect_stack_drift,
+            describe_drift_detection_status,
+            describe_stack_resource_drifts,
+            list_change_sets,
+            describe_change_set,
+            create_change_set,
+            execute_change_set,
+            delete_change_set,
+            list_cf_exports,
+            list_cf_imports,
+            estimate_template_cost,
+            get_template_summary,
             // Billing / Cost Explorer
             get_monthly_cost_by_service,
             get_daily_costs,
@@ -57,6 +71,8 @@ pub fn run() {
             get_cost_summary,
             get_usage_by_service,
             get_cost_report,
+            // Dashboard
+            get_dashboard_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

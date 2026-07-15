@@ -77,13 +77,14 @@
         </div>
 
         <!-- Stack List -->
-        <div v-else class="stacks-list">
+        <div v-else class="stacks-list" @contextmenu.prevent="openStacksAreaCtx($event)">
           <div 
             v-for="stack in stacks" 
             :key="stack.name" 
             class="stack-item"
             :class="{ 'stack-item--active': selectedStack === stack.name }"
             @click="selectStack(stack.name)"
+            @contextmenu.prevent.stop="openStackCtx($event, stack)"
           >
             <div class="stack-name">{{ stack.name }}</div>
             <div class="stack-meta">
@@ -155,7 +156,7 @@
                   :class="{ 'resource-type-btn--active': builderForm.type === rt.id }"
                   @click="selectResourceType(rt.id)"
                 >
-                  <div class="rt-icon">{{ rt.icon }}</div>
+                  <div class="rt-icon" v-html="rt.icon"></div>
                   <div class="rt-info">
                     <span class="rt-name">{{ rt.label }}</span>
                     <span class="rt-desc">{{ rt.shortDesc }}</span>
@@ -181,9 +182,9 @@
                       <label>Logical ID</label>
                       <button class="tip-btn" @click="toggleTip('logicalId')">?</button>
                     </div>
-                    <input v-model="builderForm.logicalId" type="text" class="glass-input" placeholder="MyResource" @input="generateYaml" />
+                    <input v-model="builderForm.logicalId" type="text" class="glass-input" placeholder="MyResource" @input="sanitizeLogicalId(); generateYaml()" />
                     <div v-if="activeTip === 'logicalId'" class="tip-box">
-                      <strong>Logical ID</strong> is the unique identifier for this resource within the template. Other resources can reference it using <code>!Ref</code> or <code>!GetAtt</code>. Must be alphanumeric.
+                      <strong>Logical ID</strong> is the unique identifier for this resource within the template. Other resources can reference it using <code>!Ref</code> or <code>!GetAtt</code>. Must be alphanumeric only (no hyphens, spaces or special characters).
                     </div>
                   </div>
                 </div>
@@ -534,6 +535,9 @@
           <button class="tab" :class="{ 'tab--active': detailTab === 'overview' }" @click="detailTab = 'overview'">Overview</button>
           <button class="tab" :class="{ 'tab--active': detailTab === 'resources' }" @click="detailTab = 'resources'; loadResources()">Resources</button>
           <button class="tab" :class="{ 'tab--active': detailTab === 'outputs' }" @click="detailTab = 'outputs'">Outputs</button>
+          <button class="tab" :class="{ 'tab--active': detailTab === 'template' }" @click="detailTab = 'template'; loadStackTemplate()">Template</button>
+          <button class="tab" :class="{ 'tab--active': detailTab === 'drift' }" @click="detailTab = 'drift'">Drift</button>
+          <button class="tab" :class="{ 'tab--active': detailTab === 'changes' }" @click="detailTab = 'changes'; loadChangeSets()">Changes</button>
           <button class="tab" :class="{ 'tab--active': detailTab === 'events' }" @click="detailTab = 'events'; loadEvents()">Events</button>
         </div>
 
@@ -628,6 +632,81 @@
             </div>
           </div>
         </div>
+
+        <!-- Template Tab -->
+        <div v-if="detailTab === 'template'" class="detail-content">
+          <div class="template-actions">
+            <button class="btn-secondary" @click="loadStackTemplate" :disabled="loadingTemplate">↻ Refresh</button>
+            <button class="btn-secondary" @click="loadToEditor">Load to Editor</button>
+            <button class="btn-secondary" @click="estimateCost" :disabled="!stackTemplateBody">💰 Estimate Cost</button>
+          </div>
+          <div v-if="loadingTemplate" class="detail-loading">Loading template...</div>
+          <pre v-else-if="stackTemplateBody" class="template-code">{{ stackTemplateBody }}</pre>
+          <div v-else class="detail-empty">No template available.</div>
+        </div>
+
+        <!-- Drift Tab -->
+        <div v-if="detailTab === 'drift'" class="detail-content">
+          <div class="drift-actions">
+            <button class="btn-primary" @click="startDriftDetection" :disabled="driftDetecting">
+              {{ driftDetecting ? 'Detecting...' : '🔍 Detect Drift' }}
+            </button>
+            <button class="btn-secondary" @click="loadDriftResults" :disabled="!driftDetectionId">View Results</button>
+            <span v-if="driftStatus" class="badge" :class="driftStatusClass">{{ driftStatus }}</span>
+          </div>
+          <div v-if="driftResources.length > 0" class="drift-results">
+            <div class="resource-table">
+              <div class="resource-table-header">
+                <span>Resource</span>
+                <span>Type</span>
+                <span>Drift Status</span>
+              </div>
+              <div v-for="d in driftResources" :key="d.logical_resource_id" class="resource-table-row" :class="driftRowClass(d.drift_status)">
+                <span class="resource-logical-id">{{ d.logical_resource_id }}</span>
+                <span class="resource-type">{{ d.resource_type?.replace('AWS::', '') }}</span>
+                <span class="badge" :class="driftBadgeClass(d.drift_status)">{{ d.drift_status }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="!driftDetecting" class="detail-empty">
+            <p class="text-tertiary text-sm">Click "Detect Drift" to check if resources were modified outside CloudFormation.</p>
+          </div>
+        </div>
+
+        <!-- Changes Tab -->
+        <div v-if="detailTab === 'changes'" class="detail-content">
+          <div class="drift-actions">
+            <button class="btn-primary" @click="openCreateChangeSet" :disabled="!templateYaml.trim()">+ Create Change Set</button>
+            <button class="btn-secondary" @click="loadChangeSets">↻ Refresh</button>
+          </div>
+          <div v-if="loadingChangeSets" class="detail-loading">Loading change sets...</div>
+          <div v-else-if="changeSets.length === 0" class="detail-empty">
+            <p class="text-tertiary text-sm">No change sets. Create one to preview updates before applying.</p>
+          </div>
+          <div v-else class="change-sets-list">
+            <div v-for="cs in changeSets" :key="cs.change_set_id" class="change-set-card">
+              <div class="cs-header">
+                <span class="cs-name">{{ cs.change_set_name }}</span>
+                <span class="badge badge-sm" :class="statusBadgeClass(cs.status || '')">{{ cs.status }}</span>
+              </div>
+              <div v-if="cs.description" class="text-tertiary text-sm">{{ cs.description }}</div>
+              <div class="cs-actions">
+                <button class="btn-secondary" style="font-size:0.6875rem;padding:0.25rem 0.5rem" @click="viewChangeSet(cs.change_set_name!)">View Changes</button>
+                <button v-if="cs.execution_status === 'AVAILABLE'" class="btn-primary" style="font-size:0.6875rem;padding:0.25rem 0.5rem" @click="executeChangeSetAction(cs.change_set_name!)">Execute</button>
+                <button class="btn-danger" style="font-size:0.6875rem;padding:0.25rem 0.5rem" @click="deleteChangeSetAction(cs.change_set_name!)">Delete</button>
+              </div>
+              <!-- Expanded changes -->
+              <div v-if="expandedChangeSet === cs.change_set_name && changeSetChanges.length > 0" class="cs-changes">
+                <div v-for="ch in changeSetChanges" :key="ch.logical_resource_id" class="cs-change-row">
+                  <span class="cs-action-badge" :class="'cs-action--' + (ch.action || '').toLowerCase()">{{ ch.action }}</span>
+                  <span class="cs-change-id">{{ ch.logical_resource_id }}</span>
+                  <span class="resource-type">{{ ch.resource_type?.replace('AWS::', '') }}</span>
+                  <span v-if="ch.replacement === 'True'" class="badge badge--error badge-sm">REPLACE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -639,7 +718,7 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" :class="{ spinning: deployInProgress }">
               <path d="M14 8A6 6 0 1 1 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
-            <h3>Deploy: {{ trackedStackName }}</h3>
+            <h3>{{ trackedOperation }}: {{ trackedStackName }}</h3>
             <span :class="deployOverallStatusClass" class="badge">{{ deployOverallStatus }}</span>
           </div>
           <button class="btn-icon" @click="closeTracker" title="Close">
@@ -698,6 +777,63 @@
         </div>
       </div>
     </div>
+
+    <!-- Context Menus -->
+    <Teleport to="body">
+      <div v-if="cfCtxMenu.visible" class="context-menu" :style="cfCtxMenuStyle" @click.stop>
+        <!-- Stack context menu -->
+        <template v-if="cfCtxMenu.type === 'stack' && cfCtxMenu.target">
+          <button class="context-menu-item" @click="selectStack(cfCtxMenu.target.name); closeCfCtx()">
+            <span>📋</span> View Details
+          </button>
+          <button class="context-menu-item" @click="selectStack(cfCtxMenu.target.name); detailTab = 'template'; loadStackTemplate(); closeCfCtx()">
+            <span>📄</span> View Template
+          </button>
+          <button class="context-menu-item" @click="selectStack(cfCtxMenu.target.name); detailTab = 'drift'; closeCfCtx()">
+            <span>🔍</span> Detect Drift
+          </button>
+          <button class="context-menu-item" @click="selectStack(cfCtxMenu.target.name); detailTab = 'changes'; loadChangeSets(); closeCfCtx()">
+            <span>📝</span> Change Sets
+          </button>
+          <div class="context-menu-divider"></div>
+          <button class="context-menu-item" @click="selectedStack = cfCtxMenu.target.name; updateSelectedStack(); closeCfCtx()">
+            <span>⬆</span> Update Stack
+          </button>
+          <button class="context-menu-item context-menu-item--danger" @click="selectedStack = cfCtxMenu.target.name; confirmDeleteStack(); closeCfCtx()">
+            <span>✕</span> Delete Stack
+          </button>
+        </template>
+        <!-- Stacks area context menu -->
+        <template v-if="cfCtxMenu.type === 'area'">
+          <button class="context-menu-item" @click="openDeployModal(); closeCfCtx()">
+            <span>🚀</span> Deploy New Stack
+          </button>
+          <button class="context-menu-item" @click="validateTemplate(); closeCfCtx()">
+            <span>✓</span> Validate Template
+          </button>
+          <div class="context-menu-divider"></div>
+          <button class="context-menu-item" @click="fetchStacks(); closeCfCtx()">
+            <span>↻</span> Refresh Stacks
+          </button>
+        </template>
+      </div>
+    </Teleport>
+
+    <!-- Create Change Set Modal -->
+    <ModalDialog :visible="showChangeSetModal" title="Create Change Set" size="sm" @close="showChangeSetModal = false">
+      <div class="form-group" style="margin-bottom:0.75rem">
+        <label>Change Set Name</label>
+        <input v-model="newChangeSetName" type="text" class="glass-input" placeholder="my-update-preview" @keyup.enter="createNewChangeSet" />
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <input v-model="newChangeSetDesc" type="text" class="glass-input" placeholder="What's changing..." />
+      </div>
+      <template #footer>
+        <button class="btn-secondary" @click="showChangeSetModal = false">Cancel</button>
+        <button class="btn-primary" @click="createNewChangeSet" :disabled="!newChangeSetName.trim()">Create</button>
+      </template>
+    </ModalDialog>
 
     <!-- Deploy Modal -->
     <ModalDialog :visible="showDeployModal" title="Deploy Stack" size="sm" @close="showDeployModal = false">
@@ -769,9 +905,9 @@ function toggleTip(id: string) {
 
 // Resource types registry
 const resourceTypes = [
-  { id: 's3', label: 'S3 Bucket', icon: '🪣', cfType: 'AWS::S3::Bucket', shortDesc: 'Object storage', description: 'Amazon S3 provides scalable object storage with high durability. Use it for static assets, backups, data lakes, and application data.' },
-  { id: 'sqs', label: 'SQS Queue', icon: '📨', cfType: 'AWS::SQS::Queue', shortDesc: 'Message queue', description: 'Amazon SQS is a fully managed message queuing service for decoupling and scaling microservices, distributed systems, and serverless applications.' },
-  { id: 'sns', label: 'SNS Topic', icon: '🔔', cfType: 'AWS::SNS::Topic', shortDesc: 'Pub/sub messaging', description: 'Amazon SNS is a pub/sub messaging service for sending notifications to multiple subscribers via HTTP, email, SMS, SQS, or Lambda.' },
+  { id: 's3', label: 'S3 Bucket', icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4C2 4 4 2 8 2C12 2 14 4 14 4V12C14 12 12 14 8 14C4 14 2 12 2 12V4Z"/><path d="M2 4C2 4 4 6 8 6C12 6 14 4 14 4"/><path d="M2 8C2 8 4 10 8 10C12 10 14 8 14 8"/></svg>', cfType: 'AWS::S3::Bucket', shortDesc: 'Object storage', description: 'Amazon S3 provides scalable object storage with high durability. Use it for static assets, backups, data lakes, and application data.' },
+  { id: 'sqs', label: 'SQS Queue', icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M5 7H11" stroke-linecap="round"/><path d="M5 9H9" stroke-linecap="round"/></svg>', cfType: 'AWS::SQS::Queue', shortDesc: 'Message queue', description: 'Amazon SQS is a fully managed message queuing service for decoupling and scaling microservices, distributed systems, and serverless applications.' },
+  { id: 'sns', label: 'SNS Topic', icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2V10" stroke-linecap="round"/><path d="M5 5L8 2L11 5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="12" r="2"/><path d="M4 8C3 9 3 11 4 12" stroke-linecap="round"/><path d="M12 8C13 9 13 11 12 12" stroke-linecap="round"/></svg>', cfType: 'AWS::SNS::Topic', shortDesc: 'Pub/sub messaging', description: 'Amazon SNS is a pub/sub messaging service for sending notifications to multiple subscribers via HTTP, email, SMS, SQS, or Lambda.' },
 ];
 
 const currentResourceType = computed(() => resourceTypes.find(r => r.id === builderForm.value.type));
@@ -824,13 +960,19 @@ function selectResourceType(id: string) {
   generateYaml();
 }
 
+function sanitizeLogicalId() {
+  builderForm.value.logicalId = builderForm.value.logicalId.replace(/[^a-zA-Z0-9]/g, '');
+}
+
 const generateYaml = () => {
-  const id = builderForm.value.logicalId || 'MyResource';
+  // Logical ID must be alphanumeric only (no hyphens, underscores, or spaces)
+  const rawId = builderForm.value.logicalId || 'MyResource';
+  const id = rawId.replace(/[^a-zA-Z0-9]/g, '');
   let lines: string[] = [
     "AWSTemplateFormatVersion: '2010-09-09'",
     "Description: 'Generated by Easy Cloud Builder'",
     "Resources:",
-    `  ${id}:`,
+    `  ${id || 'MyResource'}:`,
   ];
 
   if (builderForm.value.type === 's3') {
@@ -919,7 +1061,7 @@ const stacksError = ref('');
 
 // Stack Detail
 const selectedStack = ref<string | null>(null);
-const detailTab = ref<'overview' | 'resources' | 'outputs' | 'events'>('overview');
+const detailTab = ref<'overview' | 'resources' | 'outputs' | 'events' | 'template' | 'drift' | 'changes'>('overview');
 const stackDetails = ref<any>(null);
 const loadingDetails = ref(false);
 const stackResources = ref<any[]>([]);
@@ -927,6 +1069,37 @@ const loadingResources = ref(false);
 const stackEvents = ref<any[]>([]);
 const loadingEvents = ref(false);
 const validating = ref(false);
+
+// Template tab
+const stackTemplateBody = ref('');
+const loadingTemplate = ref(false);
+
+// Drift tab
+const driftDetecting = ref(false);
+const driftDetectionId = ref('');
+const driftStatus = ref('');
+const driftResources = ref<any[]>([]);
+
+// Change Sets tab
+const changeSets = ref<any[]>([]);
+const loadingChangeSets = ref(false);
+const expandedChangeSet = ref<string | null>(null);
+const changeSetChanges = ref<any[]>([]);
+const showChangeSetModal = ref(false);
+const newChangeSetName = ref('');
+const newChangeSetDesc = ref('');
+
+// Context Menu
+const cfCtxMenu = ref<{ visible: boolean; type: 'stack' | 'area'; target: any; x: number; y: number }>({
+  visible: false, type: 'area', target: null, x: 0, y: 0
+});
+const cfCtxMenuStyle = computed(() => {
+  const m = cfCtxMenu.value;
+  let x = m.x, y = m.y;
+  if (x + 200 > window.innerWidth) x = window.innerWidth - 208;
+  if (y + 250 > window.innerHeight) y = window.innerHeight - 258;
+  return { left: `${x}px`, top: `${y}px` };
+});
 
 // Deploy
 const showDeployModal = ref(false);
@@ -946,6 +1119,7 @@ interface StackEvent {
 
 const deployTrackerVisible = ref(false);
 const trackedStackName = ref('');
+const trackedOperation = ref<'Deploy' | 'Update' | 'Delete'>('Deploy');
 const deployEvents = ref<StackEvent[]>([]);
 const deployStartTime = ref<number>(0);
 const deployElapsedTime = ref('0s');
@@ -954,18 +1128,23 @@ let elapsedInterval: ReturnType<typeof setInterval> | null = null;
 
 const deployInProgress = computed(() => {
   if (deployEvents.value.length === 0) return true;
+  // Find the stack-level event (most recent for this stack)
   const stackEvent = deployEvents.value.find(
-    e => e.logical_resource_id === trackedStackName.value && e.resource_type === 'AWS::CloudFormation::Stack'
+    e => e.resource_type === 'AWS::CloudFormation::Stack'
+      && (e.logical_resource_id === trackedStackName.value || e.physical_resource_id?.includes(trackedStackName.value))
   );
   if (!stackEvent) return true;
   const status = stackEvent.resource_status || '';
-  return status.includes('IN_PROGRESS');
+  // Terminal states: anything that ends in COMPLETE, FAILED, or ROLLBACK_COMPLETE
+  const isTerminal = (status.endsWith('_COMPLETE') || status.endsWith('_FAILED') || status === 'DELETE_COMPLETE');
+  return !isTerminal;
 });
 
 const deployOverallStatus = computed(() => {
   if (deployEvents.value.length === 0) return 'Initiating...';
   const stackEvent = deployEvents.value.find(
-    e => e.logical_resource_id === trackedStackName.value && e.resource_type === 'AWS::CloudFormation::Stack'
+    e => e.resource_type === 'AWS::CloudFormation::Stack'
+      && (e.logical_resource_id === trackedStackName.value || e.physical_resource_id?.includes(trackedStackName.value))
   );
   if (!stackEvent) return 'In Progress';
   return formatEventStatus(stackEvent.resource_status || '');
@@ -973,7 +1152,8 @@ const deployOverallStatus = computed(() => {
 
 const deployOverallStatusClass = computed(() => {
   const stackEvent = deployEvents.value.find(
-    e => e.logical_resource_id === trackedStackName.value && e.resource_type === 'AWS::CloudFormation::Stack'
+    e => e.resource_type === 'AWS::CloudFormation::Stack'
+      && (e.logical_resource_id === trackedStackName.value || e.physical_resource_id?.includes(trackedStackName.value))
   );
   if (!stackEvent) return 'badge--warning';
   return eventStatusClass(stackEvent.resource_status || '');
@@ -1024,7 +1204,7 @@ const deployProgressBarClass = computed(() => {
 
 function isEventSuccess(status: string | null) {
   if (!status) return false;
-  return status.includes('COMPLETE') && !status.includes('DELETE') && !status.includes('ROLLBACK');
+  return status.includes('COMPLETE') && !status.includes('ROLLBACK');
 }
 
 function isEventFailed(status: string | null) {
@@ -1081,19 +1261,49 @@ async function pollStackEvents() {
     if (res.success && res.events) {
       deployEvents.value = res.events;
 
-      // Check if deploy finished
+      // Check if operation finished
       if (!deployInProgress.value) {
         stopPolling();
-        fetchStacks(); // Refresh stacks list
+        fetchStacks();
+      }
+    } else if (!res.success) {
+      // Stack not found — likely deleted successfully
+      if (trackedOperation.value === 'Delete') {
+        // Mark as completed
+        deployEvents.value = [{
+          event_id: 'delete-complete',
+          logical_resource_id: trackedStackName.value,
+          physical_resource_id: null,
+          resource_type: 'AWS::CloudFormation::Stack',
+          resource_status: 'DELETE_COMPLETE',
+          resource_status_reason: 'Stack successfully deleted',
+          timestamp: new Date().toISOString(),
+        }];
+        stopPolling();
+        fetchStacks();
       }
     }
   } catch (err) {
-    // Silently continue polling
+    // If we get an error during delete polling, stack is likely gone
+    if (trackedOperation.value === 'Delete') {
+      deployEvents.value = [{
+        event_id: 'delete-complete',
+        logical_resource_id: trackedStackName.value,
+        physical_resource_id: null,
+        resource_type: 'AWS::CloudFormation::Stack',
+        resource_status: 'DELETE_COMPLETE',
+        resource_status_reason: 'Stack successfully deleted',
+        timestamp: new Date().toISOString(),
+      }];
+      stopPolling();
+      fetchStacks();
+    }
   }
 }
 
-function startPolling(stackName: string) {
+function startPolling(stackName: string, operation: 'Deploy' | 'Update' | 'Delete' = 'Deploy') {
   trackedStackName.value = stackName;
+  trackedOperation.value = operation;
   deployEvents.value = [];
   deployTrackerVisible.value = true;
   deployStartTime.value = Date.now();
@@ -1149,6 +1359,7 @@ onMounted(() => {
   if (accountsStore.activeAccountId) {
     fetchStacks();
   }
+  document.addEventListener('click', () => { cfCtxMenu.value = { ...cfCtxMenu.value, visible: false }; });
 });
 
 watch(() => accountsStore.activeAccountId, (newId) => {
@@ -1307,7 +1518,7 @@ async function deleteStack(name: string) {
     if (res.success) {
       toast?.success(`Stack "${name}" delete initiated`, 'Delete Started');
       selectedStack.value = null;
-      startPolling(name);
+      startPolling(name, 'Delete');
     } else {
       toast?.error(res.error_message || 'Delete failed', 'Error');
     }
@@ -1333,7 +1544,7 @@ async function updateSelectedStack() {
     });
     if (res.success) {
       toast?.success(`Stack "${selectedStack.value}" update initiated`, 'Update Started');
-      startPolling(selectedStack.value);
+      startPolling(selectedStack.value, 'Update');
     } else {
       toast?.error(res.error_message || 'Update failed', 'Error');
     }
@@ -1375,6 +1586,238 @@ function eventRowClass(status: string | null | undefined) {
   if (status.includes('FAILED') || status.includes('ROLLBACK')) return 'event-row--error';
   if (status.includes('COMPLETE')) return 'event-row--success';
   return '';
+}
+
+// Context Menu
+function openStackCtx(event: MouseEvent, stack: any) {
+  cfCtxMenu.value = { visible: true, type: 'stack', target: stack, x: event.clientX, y: event.clientY };
+}
+function openStacksAreaCtx(event: MouseEvent) {
+  cfCtxMenu.value = { visible: true, type: 'area', target: null, x: event.clientX, y: event.clientY };
+}
+function closeCfCtx() {
+  cfCtxMenu.value = { ...cfCtxMenu.value, visible: false };
+}
+
+// Template tab
+async function loadStackTemplate() {
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  loadingTemplate.value = true;
+  try {
+    const res: any = await invoke('get_stack_template', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value,
+    });
+    if (res.success) stackTemplateBody.value = res.template_body || '';
+  } catch (_) {}
+  finally { loadingTemplate.value = false; }
+}
+
+function loadToEditor() {
+  if (stackTemplateBody.value) {
+    templateYaml.value = stackTemplateBody.value;
+    toast?.success('Template loaded into editor', 'Done');
+  }
+}
+
+async function estimateCost() {
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  const body = stackTemplateBody.value || templateYaml.value;
+  if (!body.trim()) return;
+  try {
+    const res: any = await invoke('estimate_template_cost', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, templateBody: body,
+    });
+    if (res.success && res.url) {
+      window.open(res.url, '_blank');
+    } else {
+      toast?.error(res.error_message || 'Failed to estimate cost', 'Error');
+    }
+  } catch (e: any) { toast?.error(e.message || e.toString(), 'Error'); }
+}
+
+// Drift detection
+async function startDriftDetection() {
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  driftDetecting.value = true;
+  driftResources.value = [];
+  driftStatus.value = '';
+  try {
+    const res: any = await invoke('detect_stack_drift', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value,
+    });
+    if (res.success && res.detection_id) {
+      driftDetectionId.value = res.detection_id;
+      toast?.info('Drift detection started. Checking status...', 'Drift');
+      pollDriftStatus();
+    } else {
+      toast?.error(res.error_message || 'Failed', 'Drift Error');
+      driftDetecting.value = false;
+    }
+  } catch (e: any) { toast?.error(e.message, 'Error'); driftDetecting.value = false; }
+}
+
+async function pollDriftStatus() {
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc || !driftDetectionId.value) return;
+  
+  const check = async (): Promise<boolean> => {
+    const res: any = await invoke('describe_drift_detection_status', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, detectionId: driftDetectionId.value,
+    });
+    if (res.success) {
+      if (res.detection_status === 'DETECTION_COMPLETE') {
+        driftStatus.value = res.drift_status || 'IN_SYNC';
+        driftDetecting.value = false;
+        loadDriftResults();
+        return true;
+      } else if (res.detection_status === 'DETECTION_FAILED') {
+        driftStatus.value = 'FAILED';
+        driftDetecting.value = false;
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  // Poll every 2s up to 30s
+  for (let i = 0; i < 15; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    if (await check()) return;
+  }
+  driftDetecting.value = false;
+  toast?.warning('Drift detection still in progress. Click "View Results" later.', 'Drift');
+}
+
+async function loadDriftResults() {
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  try {
+    const res: any = await invoke('describe_stack_resource_drifts', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value,
+    });
+    if (res.success) driftResources.value = res.drifts || [];
+  } catch (_) {}
+}
+
+function driftStatusClass(): string {
+  if (driftStatus.value === 'IN_SYNC') return 'badge--success';
+  if (driftStatus.value === 'DRIFTED') return 'badge--error';
+  return 'badge--warning';
+}
+
+function driftRowClass(status: string | null | undefined): string {
+  if (status === 'MODIFIED' || status === 'DELETED') return 'event-row--error';
+  if (status === 'IN_SYNC') return '';
+  return '';
+}
+
+function driftBadgeClass(status: string | null | undefined): string {
+  if (status === 'IN_SYNC') return 'badge--success';
+  if (status === 'MODIFIED' || status === 'DELETED') return 'badge--error';
+  return 'badge--warning';
+}
+
+// Change Sets
+async function loadChangeSets() {
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  loadingChangeSets.value = true;
+  try {
+    const res: any = await invoke('list_change_sets', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value,
+    });
+    if (res.success) changeSets.value = res.change_sets || [];
+  } catch (_) {}
+  finally { loadingChangeSets.value = false; }
+}
+
+function openCreateChangeSet() {
+  newChangeSetName.value = `update-${Date.now().toString(36)}`;
+  newChangeSetDesc.value = '';
+  showChangeSetModal.value = true;
+}
+
+async function createNewChangeSet() {
+  if (!selectedStack.value || !newChangeSetName.value.trim()) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  try {
+    const res: any = await invoke('create_change_set', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value,
+      changeSetName: newChangeSetName.value.trim(),
+      templateBody: templateYaml.value,
+      description: newChangeSetDesc.value || null,
+    });
+    if (res.success) {
+      toast?.success('Change set created', 'Done');
+      showChangeSetModal.value = false;
+      setTimeout(() => loadChangeSets(), 2000); // give AWS time to process
+    } else {
+      toast?.error(res.error_message || 'Failed', 'Error');
+    }
+  } catch (e: any) { toast?.error(e.message, 'Error'); }
+}
+
+async function viewChangeSet(name: string) {
+  if (expandedChangeSet.value === name) { expandedChangeSet.value = null; return; }
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  try {
+    const res: any = await invoke('describe_change_set', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value, changeSetName: name,
+    });
+    if (res.success) {
+      changeSetChanges.value = res.changes || [];
+      expandedChangeSet.value = name;
+    }
+  } catch (_) {}
+}
+
+async function executeChangeSetAction(name: string) {
+  if (!selectedStack.value) return;
+  if (!confirm(`Execute change set "${name}"? This will apply the changes to your stack.`)) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  try {
+    const res: any = await invoke('execute_change_set', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value, changeSetName: name,
+    });
+    if (res.success) {
+      toast?.success('Change set executing', 'Done');
+      startPolling(selectedStack.value, 'Update');
+    } else toast?.error(res.error_message || 'Failed', 'Error');
+  } catch (e: any) { toast?.error(e.message, 'Error'); }
+}
+
+async function deleteChangeSetAction(name: string) {
+  if (!selectedStack.value) return;
+  const acc = accountsStore.accounts.find(a => a.id === accountsStore.activeAccountId);
+  if (!acc) return;
+  try {
+    const res: any = await invoke('delete_change_set', {
+      accessKeyId: acc.accessKeyId, secretAccessKey: acc.secretAccessKey,
+      region: acc.region, stackName: selectedStack.value, changeSetName: name,
+    });
+    if (res.success) { toast?.info('Change set deleted', 'Done'); loadChangeSets(); }
+    else toast?.error(res.error_message || 'Failed', 'Error');
+  } catch (e: any) { toast?.error(e.message, 'Error'); }
 }
 </script>
 
@@ -1637,6 +2080,7 @@ function eventRowClass(status: string | null | undefined) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: var(--text-primary);
 }
 
 .rt-info {
@@ -2315,4 +2759,54 @@ function eventRowClass(status: string | null | undefined) {
   font-size: 0.625rem;
   padding: 0.125rem 0.375rem;
 }
+
+/* Template Tab */
+.template-actions, .drift-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.template-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin: 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Drift */
+.drift-results { margin-top: 0.75rem; }
+
+/* Change Sets */
+.change-sets-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.change-set-card { padding: 0.75rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-secondary); }
+.cs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+.cs-name { font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); }
+.cs-actions { display: flex; gap: 0.375rem; margin-top: 0.5rem; }
+.cs-changes { margin-top: 0.75rem; border-top: 1px solid var(--border-default); padding-top: 0.625rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.cs-change-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.75rem; }
+.cs-action-badge { font-size: 0.625rem; font-weight: 600; padding: 0.125rem 0.375rem; border-radius: 3px; text-transform: uppercase; }
+.cs-action--add { background: rgba(12, 206, 107, 0.1); color: #22c55e; }
+.cs-action--modify { background: rgba(245, 166, 35, 0.1); color: #f5a623; }
+.cs-action--remove { background: rgba(238, 0, 0, 0.1); color: #ef4444; }
+.cs-change-id { font-weight: 500; color: var(--text-primary); }
+
+/* Context Menu (CF) */
+.context-menu { position: fixed; z-index: 9999; min-width: 190px; background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.5); padding: 0.3rem; animation: ctxIn 0.1s ease; }
+@keyframes ctxIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.context-menu-item { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.5rem 0.75rem; background: none; border: none; border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 0.8125rem; cursor: pointer; transition: all var(--transition-fast); text-align: left; }
+.context-menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.context-menu-item--danger:hover { background: var(--error-subtle); color: #ff6166; }
+.context-menu-item span { font-size: 0.9375rem; width: 18px; text-align: center; }
+.context-menu-divider { height: 1px; background: var(--border-default); margin: 0.3rem 0; }
 </style>

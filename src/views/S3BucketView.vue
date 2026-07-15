@@ -9,7 +9,15 @@
           </svg>
         </button>
         <div>
-          <h1>{{ bucketName }}</h1>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <h1>{{ bucketName }}</h1>
+            <button class="btn-copy-url" @click="copyBucketUrl" title="Copy bucket URL">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M3 11V3H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
           <p class="text-secondary text-sm" v-if="bucketDetails">
             {{ bucketDetails.region }} · {{ bucketDetails.encryption || 'No encryption' }}
           </p>
@@ -580,6 +588,17 @@ function getAccount() {
   const id = accountsStore.activeAccountId;
   return id ? accountsStore.accounts.find(a => a.id === id) || null : null;
 }
+
+async function copyBucketUrl() {
+  const region = bucketDetails.value?.region || 'us-east-1';
+  const url = `https://${bucketName.value}.s3.${region}.amazonaws.com`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast?.success('Bucket URL copied', 'Copied');
+  } catch (_) {
+    toast?.info(url, 'Bucket URL');
+  }
+}
 function displayName(obj: S3Obj) {
   let name = obj.key.startsWith(currentPrefix.value) ? obj.key.slice(currentPrefix.value.length) : obj.key;
   if (name.endsWith('/')) name = name.slice(0, -1);
@@ -990,6 +1009,8 @@ async function copyShareUrl() {
 .header-left h1 { margin-bottom: 0.125rem; }
 .btn-back { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast); }
 .btn-back:hover { color: var(--text-primary); border-color: var(--border-hover); }
+.btn-copy-url { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--text-tertiary); cursor: pointer; transition: all var(--transition-fast); }
+.btn-copy-url:hover { color: var(--text-primary); background: var(--bg-hover); border-color: var(--border-default); }
 .page-actions { display: flex; gap: 0.5rem; }
 
 /* Tabs */
